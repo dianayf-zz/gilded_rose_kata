@@ -1,48 +1,135 @@
 def update_quality(items)
-  items.each do |item|
-    if item.name != 'Aged Brie' && item.name != 'Backstage passes to a TAFKAL80ETC concert'
-      if item.quality > 0
-        if item.name != 'Sulfuras, Hand of Ragnaros'
-          item.quality -= 1
-        end
-      end
-    else
-      if item.quality < 50
-        item.quality += 1
-        if item.name == 'Backstage passes to a TAFKAL80ETC concert'
-          if item.sell_in < 11
-            if item.quality < 50
-              item.quality += 1
-            end
-          end
-          if item.sell_in < 6
-            if item.quality < 50
-              item.quality += 1
-            end
-          end
-        end
-      end
-    end
-    if item.name != 'Sulfuras, Hand of Ragnaros'
-      item.sell_in -= 1
-    end
+
+  def update_item_attributes(item, attribute, operation)
+    update_quality = {
+      "add" => {
+        "quality" => lambda { item.quality +=1 },
+        "sell_in" => lambda { item.sell_in +=1 }
+      },
+      "substract" => {
+        "quality" => lambda { item.quality -=1 },
+        "sell_in" => lambda { item.sell_in -=1 }
+      }
+    }
+    update_quality[operation][attribute].call
+  end
+
+  def set_zero_quality(item)
+    item.quality = 0
+  end
+
+=begin
+  def define_path
+    path = {
+      "name" => {
+        "Aged Brie" => { 
+          lambda { compare_names }=> 
+        }
+      },
+      "quality" =>,
+      "sell_in" => 
+    }
+  end
+
+  def define_path_2(item, sell_in, quality, name)
+    update_item = {
+      "true" => {  
+        "less" => {
+          "Aged" => lambda { update_item_attributes(item, "quality", "add")},
+          "new_name" => lambda { update_item_attributes(item, "quality", "substract")},
+          }
+        }
+        
+      },
+      "false" => {
+      }
+    }
+    update_item[negative_sell_in(sell_in)][level_quality(quality)][group_name(name)].call
+  end
+
+=end
+  def compare_names(name, previous_name)
+    name.eql?(previous_name)
+  end
+
+  def negative_sell_in(item)
+    item.sell_in < 0
+  end
+
+  def less_quality(item)
+    item.quality < 50 
+  end
+
+  def eval_quality(item)
     if item.sell_in < 0
       if item.name != "Aged Brie"
         if item.name != 'Backstage passes to a TAFKAL80ETC concert'
           if item.quality > 0
             if item.name != 'Sulfuras, Hand of Ragnaros'
-              item.quality -= 1
+              update_item_attributes(item, "quality", "substract")
             end
           end
         else
-          item.quality = item.quality - item.quality
+	  set_zero_quality(item)
         end
       else
-        if item.quality < 50
-          item.quality += 1
+        if less_quality(item)
+          update_item_attributes(item, "quality", "add")
         end
       end
     end
+  end
+
+  def a_different_name(item)
+    if less_quality(item)
+      update_item_attributes(item, "quality", "add")
+      if item.name == 'Backstage passes to a TAFKAL80ETC concert'
+        if item.sell_in < 11 
+          if less_quality(item)
+            update_item_attributes(item, "quality", "add")
+          end
+        end
+        if item.sell_in < 6
+          if less_quality(item)
+            update_item_attributes(item, "quality", "add")
+          end
+        end
+      end
+    end
+  end
+
+  def compare_by_quality_and_name(item, attribute)
+    choices = {
+      "quality" => {
+        true => lambda { compare_by_quality_and_name(item, "name") },
+        false => lambda { false }
+      },
+      "name" => {
+	false  =>  lambda { update_item_attributes(item, "quality", "substract")},
+        true => lambda { false }
+      }
+    }
+    choices[attribute][set_method_for_quality_or_name(item, attribute)].call
+  end
+
+  def set_method_for_quality_or_name(item, attribute)
+    methods = {
+      "quality" => lambda { item.quality > 0 },
+      "name" => lambda {compare_names(item.name, "Sulfuras, Hand of Ragnaros") }
+    }
+    methods[attribute].call
+  end
+
+  items.each do |item|
+    if item.name != 'Aged Brie' && item.name != 'Backstage passes to a TAFKAL80ETC concert'
+      compare_by_quality_and_name(item, "quality")
+    else
+     a_different_name(item)
+    end
+    if item.name != 'Sulfuras, Hand of Ragnaros'
+      update_item_attributes(item, "sell_in", "substract")
+    end
+    eval_quality(item)
   end
 end
 
